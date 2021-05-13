@@ -111,6 +111,10 @@ namespace sferes {
                                                                      Exact>,
                                                      Exact>::ret
                             > {
+	friend ea::Ea<Phen, Eval, stat_qd_t<Stat, Phen, Params>, FitModifier, Params,
+		      typename stc::FindExact<QualityDiversity<Phen, Eval, Stat, FitModifier, 
+		      					       Selector, Container, Params, Exact>,
+					      Exact>::ret>;
         public:
             typedef Phen phen_t;
             typedef boost::shared_ptr<Phen> indiv_t;
@@ -142,7 +146,7 @@ namespace sferes {
                 this->_eval_pop(this->_offspring, 0, this->_offspring.size());
                 this->apply_modifier();
 
-                _add(_offspring, _added);
+		stc::exact(this)->_add(_offspring, _added);
 
                 this->_parents = this->_offspring;
                 _offspring.resize(Params::pop::size);
@@ -154,7 +158,7 @@ namespace sferes {
 
                 this->_eval_pop(this->_offspring, 0, this->_offspring.size());
                 this->apply_modifier();
-                _add(_offspring, _added);
+		stc::exact(this)->_add(_offspring, _added);
 
                 _container.get_full_content(this->_pop);
             }
@@ -192,7 +196,7 @@ namespace sferes {
                 this->apply_modifier();
 
                 // Addition of the offspring to the container
-                _add(_offspring, _added, _parents);
+		stc::exact(this)->_add(_offspring, _added, _parents);
 
                 assert(_offspring.size() == _parents.size());
 
@@ -258,6 +262,7 @@ namespace sferes {
             const std::vector<bool>& added() const { return _added; }
             std::vector<bool>& added() { return _added; }
 
+        protected:
 	    // Override _set_pop for resume with qd
       	    void _set_pop(const pop_t& p) 
 	    { 
@@ -267,14 +272,13 @@ namespace sferes {
                 _container.get_full_content(this->_pop);
 	    }
 
-        protected:
             // Add the offspring into the container and update the score of the individuals from the
             // container and both of the sub population (offspring and parents)
             void _add(pop_t& pop_off, std::vector<bool>& added, pop_t& pop_parents)
             {
                 added.resize(pop_off.size());
                 for (size_t i = 0; i < pop_off.size(); ++i)
-                    added[i] = _add_to_container(pop_off[i], pop_parents[i]);
+                    added[i] = stc::exact(this)->_add_to_container(pop_off[i], pop_parents[i]);
                 _container.update(pop_off, pop_parents);
             }
 
