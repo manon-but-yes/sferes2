@@ -206,9 +206,8 @@ namespace sferes {
                 _container.get_full_content(this->_pop);
             }
 
-            // Override the resume function
-            void
-            resume(const std::string& fname)
+            // Resume QD algorithm (override resume() from ea)
+            void resume(const std::string& fname)
             {
               dbg::trace trace("ea", DBG_HERE);
 
@@ -231,14 +230,14 @@ namespace sferes {
               sferes::ea::Resume<stat_t, has_state_t> r;
               r.resume(*this);
 
-              // Use new Resume structure
+              // Use qd Resume structure
               typedef typename boost::fusion::result_of::find<stat_t, sferes::stat::StateQD<Phen, Params>>::type
                       has_state_qd_t;
 
               sferes::qd::ResumeQD<stat_t, has_state_qd_t> resume_qd;
               resume_qd.resume(*this);
 
-              // Perform few test and resume algorithm
+              // Perform few tests and resume algorithm
               assert(!this->_pop.empty()); // test pop size
               std::cout << "Resuming at gen " << this->_gen;
               std::cout << std::endl;
@@ -263,8 +262,8 @@ namespace sferes {
             std::vector<bool>& added() { return _added; }
 
         protected:
-	    // Override _set_pop for resume with qd
-      	    void _set_pop(const pop_t& p) 
+	    // Set pop when resuming (override _set_pop() from ea)
+      	    void _set_pop(const pop_t& p)
 	    { 
 		_offspring = p;
                 for (size_t i = 0; i < p.size(); ++i)
@@ -272,8 +271,10 @@ namespace sferes {
                 _container.get_full_content(this->_pop);
 	    }
 
-            // Add the offspring into the container and update the score of the individuals from the
-            // container and both of the sub population (offspring and parents)
+	    // ---- add procedures ----
+
+            // Add offspring to container + update scores from container of both sub-pops (offspring/parents)
+	    // Override to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
             void _add(pop_t& pop_off, std::vector<bool>& added, pop_t& pop_parents)
             {
                 added.resize(pop_off.size());
@@ -282,7 +283,8 @@ namespace sferes {
                 _container.update(pop_off, pop_parents);
             }
 
-            // Same function, but without the need of parent.
+            // Add offspring to container + update scores from container of offspring
+	    // Override to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
             void _add(pop_t& pop_off, std::vector<bool>& added)
             {
                 added.resize(pop_off.size());
@@ -292,8 +294,9 @@ namespace sferes {
                 _container.update(pop_off, empty);
             }
 
-            // add to the container procedure.
+	    // Add individual to container and update parent curiosity
             // TODO JBM: curiosity is hardcoded here...
+	    // Override to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
             bool _add_to_container(indiv_t i1, indiv_t parent)
             {
                 if (_container.add(i1)) {
