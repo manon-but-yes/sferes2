@@ -116,7 +116,7 @@ namespace sferes {
                                                                      DefaultStat>,
                                                      Exact>::ret
                             > {
-	friend ea::Ea<Phen, Eval, stat_qd_with_default_t<Stat, Phen, Params>, FitModifier, Params,
+	friend ea::Ea<Phen, Eval, stat_qd_with_default_t<Stat, DefaultStat>, FitModifier, Params,
 		      typename stc::FindExact<QualityDiversity<Phen, Eval, Stat, FitModifier, 
 		      					       Selector, Container, Params, Exact, DefaultStat>,
 					      Exact>::ret>;
