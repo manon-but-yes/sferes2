@@ -261,6 +261,7 @@ namespace sferes {
             }
 
             const Container& container() const { return _container; }
+            Container& container() { return _container; }
 
             const pop_t& pop() const { return this->_pop; }
             pop_t& pop() { return this->_pop; }
