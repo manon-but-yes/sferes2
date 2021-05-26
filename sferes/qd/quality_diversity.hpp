@@ -60,6 +60,16 @@
 namespace sferes {
     namespace qd {
 
+        // Add StateQD in stats list for ea
+#ifdef SFERES_NO_STATE
+	template<typename Stat, typename DefaultStat> using stat_qd_with_default_t = Stat;
+#else
+	template<typename Stat, typename DefaultStat> using stat_qd_with_default_t =
+	     typename boost::fusion::result_of::as_vector<boost::fusion::joint_view<Stat,
+                                                                                    DefaultStat>
+                                                         >::type;
+#endif
+
         // Structure for resume archive
         template<typename T, typename A>
         struct ResumeQD {
@@ -85,11 +95,14 @@ namespace sferes {
 
         // Main class
         template <typename Phen, typename Eval, typename Stat, typename FitModifier,
-            typename Selector, typename Container, typename Params, typename Exact = stc::Itself>
+                  typename Selector, typename Container, typename Params,
+                  typename Exact = stc::Itself,
+                  typename DefaultStat = boost::fusion::vector<stat::StateQD<Phen, Params>>
+                  >
         class QualityDiversity
             : public ea::Ea<Phen,
                             Eval,
-                            Stat,
+			    stat_qd_with_default_t<Stat, DefaultStat>,
                             FitModifier,
                             Params,
                             typename stc::FindExact<QualityDiversity<Phen,
@@ -99,9 +112,14 @@ namespace sferes {
                                                                      Selector,
                                                                      Container,
                                                                      Params,
-                                                                     Exact>,
+                                                                     Exact,
+                                                                     DefaultStat>,
                                                      Exact>::ret
                             > {
+	friend ea::Ea<Phen, Eval, stat_qd_with_default_t<Stat, Phen, Params>, FitModifier, Params,
+		      typename stc::FindExact<QualityDiversity<Phen, Eval, Stat, FitModifier, 
+		      					       Selector, Container, Params, Exact, DefaultStat>,
+					      Exact>::ret>;
         public:
             typedef Phen phen_t;
             typedef boost::shared_ptr<Phen> indiv_t;
@@ -111,9 +129,10 @@ namespace sferes {
 #ifdef SFERES_NO_STATE
             typedef Stat stat_t;
 #else
-            typedef typename boost::fusion::vector<stat::State<Phen, Params> > state_v_t;
-            typedef typename boost::fusion::joint_view<Stat, state_v_t> joint_t;
-            typedef typename boost::fusion::result_of::as_vector<joint_t>::type  stat_t;
+            typedef typename boost::fusion::joint_view<stat_qd_with_default_t<Stat, DefaultStat>,
+		    				       boost::fusion::vector<stat::State<Phen, Params>
+                                                      > joint_qd_t;
+            typedef typename boost::fusion::result_of::as_vector<joint_qd_t>::type  stat_t;
 #endif
 
             QualityDiversity() {}
@@ -133,7 +152,7 @@ namespace sferes {
                 this->_eval_pop(this->_offspring, 0, this->_offspring.size());
                 this->apply_modifier();
 
-                _add(_offspring, _added);
+		this->add(_offspring, _added);
 
                 this->_parents = this->_offspring;
                 _offspring.resize(Params::pop::size);
@@ -145,7 +164,8 @@ namespace sferes {
 
                 this->_eval_pop(this->_offspring, 0, this->_offspring.size());
                 this->apply_modifier();
-                _add(_offspring, _added);
+
+                this->add(_offspring, _added);
 
                 _container.get_full_content(this->_pop);
             }
@@ -183,7 +203,7 @@ namespace sferes {
                 this->apply_modifier();
 
                 // Addition of the offspring to the container
-                _add(_offspring, _added, _parents);
+		this->add(_offspring, _added, _parents);
 
                 assert(_offspring.size() == _parents.size());
 
@@ -193,9 +213,8 @@ namespace sferes {
                 _container.get_full_content(this->_pop);
             }
 
-            // Override the resume function
-            void
-            resume(const std::string& fname)
+            // Resume QD algorithm (override resume() from ea)
+            void resume(const std::string& fname)
             {
               dbg::trace trace("ea", DBG_HERE);
 
@@ -218,14 +237,14 @@ namespace sferes {
               sferes::ea::Resume<stat_t, has_state_t> r;
               r.resume(*this);
 
-              // Use new Resume structure
+              // Use qd Resume structure
               typedef typename boost::fusion::result_of::find<stat_t, sferes::stat::StateQD<Phen, Params>>::type
                       has_state_qd_t;
 
               sferes::qd::ResumeQD<stat_t, has_state_qd_t> resume_qd;
               resume_qd.resume(*this);
 
-              // Perform few test and resume algorithm
+              // Perform few tests and resume algorithm
               assert(!this->_pop.empty()); // test pop size
               std::cout << "Resuming at gen " << this->_gen;
               std::cout << std::endl;
@@ -235,7 +254,20 @@ namespace sferes {
                 this->_set_status("finished");
             }
 
+            // Add offspring to container + update scores from container of both sub-pops (offspring/parents)
+            // Override _add(...) to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
+            void add(pop_t& pop_off, std::vector<bool>& added, pop_t& pop_parents) {
+              stc::exact(this)->_add(pop_off, added, pop_parents);
+            }
+
+            // Add offspring to container + update scores from container of offspring
+            // Override _add(...) to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
+            void add(pop_t& pop_off, std::vector<bool>& added) {
+              stc::exact(this)->_add(pop_off, added);
+            }
+
             const Container& container() const { return _container; }
+            Container& container() { return _container; }
 
             const pop_t& pop() const { return this->_pop; }
             pop_t& pop() { return this->_pop; }
@@ -249,8 +281,9 @@ namespace sferes {
             const std::vector<bool>& added() const { return _added; }
             std::vector<bool>& added() { return _added; }
 
-	    // Override _set_pop for resume with qd
-      	    void _set_pop(const pop_t& p) 
+        protected:
+	    // Set pop when resuming (override _set_pop() from ea)
+      	    void _set_pop(const pop_t& p)
 	    { 
 		_offspring = p;
                 for (size_t i = 0; i < p.size(); ++i)
@@ -258,18 +291,20 @@ namespace sferes {
                 _container.get_full_content(this->_pop);
 	    }
 
-        protected:
-            // Add the offspring into the container and update the score of the individuals from the
-            // container and both of the sub population (offspring and parents)
+	    // ---- add procedures ----
+
+            // Add offspring to container + update scores from container of both sub-pops (offspring/parents)
+	    // Override to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
             void _add(pop_t& pop_off, std::vector<bool>& added, pop_t& pop_parents)
             {
                 added.resize(pop_off.size());
                 for (size_t i = 0; i < pop_off.size(); ++i)
-                    added[i] = _add_to_container(pop_off[i], pop_parents[i]);
+                    added[i] = stc::exact(this)->_add_to_container(pop_off[i], pop_parents[i]);
                 _container.update(pop_off, pop_parents);
             }
 
-            // Same function, but without the need of parent.
+            // Add offspring to container + update scores from container of offspring
+	    // Override to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
             void _add(pop_t& pop_off, std::vector<bool>& added)
             {
                 added.resize(pop_off.size());
@@ -279,8 +314,9 @@ namespace sferes {
                 _container.update(pop_off, empty);
             }
 
-            // add to the container procedure.
+	    // Add individual to container and update parent curiosity
             // TODO JBM: curiosity is hardcoded here...
+	    // Override to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
             bool _add_to_container(indiv_t i1, indiv_t parent)
             {
                 if (_container.add(i1)) {
