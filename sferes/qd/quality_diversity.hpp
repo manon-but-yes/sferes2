@@ -146,7 +146,7 @@ namespace sferes {
                 this->_eval_pop(this->_offspring, 0, this->_offspring.size());
                 this->apply_modifier();
 
-		stc::exact(this)->_add(_offspring, _added);
+		this->add(_offspring, _added);
 
                 this->_parents = this->_offspring;
                 _offspring.resize(Params::pop::size);
@@ -158,7 +158,8 @@ namespace sferes {
 
                 this->_eval_pop(this->_offspring, 0, this->_offspring.size());
                 this->apply_modifier();
-		stc::exact(this)->_add(_offspring, _added);
+
+                this->add(_offspring, _added);
 
                 _container.get_full_content(this->_pop);
             }
@@ -196,7 +197,7 @@ namespace sferes {
                 this->apply_modifier();
 
                 // Addition of the offspring to the container
-		stc::exact(this)->_add(_offspring, _added, _parents);
+		this->add(_offspring, _added, _parents);
 
                 assert(_offspring.size() == _parents.size());
 
@@ -245,6 +246,18 @@ namespace sferes {
                 this->_iter();
               if (!this->_stop)
                 this->_set_status("finished");
+            }
+
+            // Add offspring to container + update scores from container of both sub-pops (offspring/parents)
+            // Override _add(...) to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
+            void add(pop_t& pop_off, std::vector<bool>& added, pop_t& pop_parents) {
+              stc::exact(this)->_add(pop_off, added, pop_parents);
+            }
+
+            // Add offspring to container + update scores from container of offspring
+            // Override _add(...) to customise (in that case DO NOT FORGET to add QualityDiversity as friend class of your algo)
+            void add(pop_t& pop_off, std::vector<bool>& added) {
+              stc::exact(this)->_add(pop_off, added);
             }
 
             const Container& container() const { return _container; }
