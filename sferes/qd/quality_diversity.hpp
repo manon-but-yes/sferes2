@@ -130,7 +130,7 @@ namespace sferes {
             typedef Stat stat_t;
 #else
             typedef typename boost::fusion::joint_view<stat_qd_with_default_t<Stat, DefaultStat>,
-		    				       boost::fusion::vector<stat::State<Phen, Params>
+		    				       boost::fusion::vector<stat::State<Phen, Params>>
                                                       > joint_qd_t;
             typedef typename boost::fusion::result_of::as_vector<joint_qd_t>::type  stat_t;
 #endif
