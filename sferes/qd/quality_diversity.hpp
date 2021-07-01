@@ -62,12 +62,11 @@ namespace sferes {
 
         // Add StateQD in stats list for ea
 #ifdef SFERES_NO_STATE
-	template<typename Stat, typename DefaultStat> using stat_qd_with_default_t = Stat;
+	template<typename Stat, typename Phen, typename Params> using stat_qd_t = Stat;
 #else
-	template<typename Stat, typename DefaultStat> using stat_qd_with_default_t =
-	     typename boost::fusion::result_of::as_vector<boost::fusion::joint_view<Stat,
-                                                                                    DefaultStat>
-                                                         >::type;
+	template<typename Stat, typename Phen, typename Params> using stat_qd_t = 
+	     typename boost::fusion::result_of::as_vector<boost::fusion::joint_view<Stat, 
+		      boost::fusion::vector<stat::StateQD<Phen, Params>>>>::type;
 #endif
 
         // Structure for resume archive
@@ -95,14 +94,11 @@ namespace sferes {
 
         // Main class
         template <typename Phen, typename Eval, typename Stat, typename FitModifier,
-                  typename Selector, typename Container, typename Params,
-                  typename Exact = stc::Itself,
-                  typename DefaultStat = boost::fusion::vector<stat::StateQD<Phen, Params>>
-                  >
+            typename Selector, typename Container, typename Params, typename Exact = stc::Itself>
         class QualityDiversity
             : public ea::Ea<Phen,
                             Eval,
-			    stat_qd_with_default_t<Stat, DefaultStat>,
+			    stat_qd_t<Stat, Phen, Params>,
                             FitModifier,
                             Params,
                             typename stc::FindExact<QualityDiversity<Phen,
@@ -112,13 +108,12 @@ namespace sferes {
                                                                      Selector,
                                                                      Container,
                                                                      Params,
-                                                                     Exact,
-                                                                     DefaultStat>,
+                                                                     Exact>,
                                                      Exact>::ret
                             > {
-	friend ea::Ea<Phen, Eval, stat_qd_with_default_t<Stat, DefaultStat>, FitModifier, Params,
+	friend ea::Ea<Phen, Eval, stat_qd_t<Stat, Phen, Params>, FitModifier, Params,
 		      typename stc::FindExact<QualityDiversity<Phen, Eval, Stat, FitModifier, 
-		      					       Selector, Container, Params, Exact, DefaultStat>,
+		      					       Selector, Container, Params, Exact>,
 					      Exact>::ret>;
         public:
             typedef Phen phen_t;
@@ -129,9 +124,8 @@ namespace sferes {
 #ifdef SFERES_NO_STATE
             typedef Stat stat_t;
 #else
-            typedef typename boost::fusion::joint_view<stat_qd_with_default_t<Stat, DefaultStat>,
-		    				       boost::fusion::vector<stat::State<Phen, Params>>
-                                                      > joint_qd_t;
+            typedef typename boost::fusion::joint_view<stat_qd_t<Stat, Phen, Params>, 
+		    				       boost::fusion::vector<stat::State<Phen, Params> >> joint_qd_t;
             typedef typename boost::fusion::result_of::as_vector<joint_qd_t>::type  stat_t;
 #endif
 
