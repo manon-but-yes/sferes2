@@ -354,7 +354,7 @@ Defining your own selector
         void operator()(std::vector<indiv_t>& pop, const EA& ea) const
         {
             /* your code that
-               (1) selects individuals based on `ea` object
+               (1) selects individuals based on `ea` object (of type QualityDiversity)
                (2) places those individuals in the vector of selected individuals `pop`
             */
         }
